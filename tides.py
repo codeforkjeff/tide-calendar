@@ -16,6 +16,7 @@ import pytz
 
 ONE_HOUR = 60 * 60
 TZ_LOS_ANGELES = pytz.timezone("America/Los_Angeles")
+TZ_NEW_YORK = pytz.timezone("America/New_York")
 DATE_FORMAT = "%Y/%m/%d"
 CACHE_DIR = "cache"
 
@@ -23,15 +24,32 @@ CACHE_DIR = "cache"
 class Place(StrEnum):
     # to find stations, see https://tidesandcurrents.noaa.gov/map/index.html
 
-    SEATTLE = "seattle", 9447130, 47.6, -122.32
-    CANNON_BEACH = "cannon_beach", 9437585, 45.89177, -123.96153
+    SEATTLE = "seattle", "Seattle, WA", 9447130, 47.6, -122.32, TZ_LOS_ANGELES
+    CANNON_BEACH = (
+        "cannon_beach",
+        "Cannon Beach, OR",
+        9437585,
+        45.89177,
+        -123.96153,
+        TZ_LOS_ANGELES,
+    )
+    PROVINCETOWN = (
+        "provincetown",
+        "Provincetown, MA",
+        8447435,
+        42.0521329,
+        -70.1927079,
+        TZ_NEW_YORK,
+    )
 
-    def __new__(cls, value, station_id, latitude, longitude):
+    def __new__(cls, value, label, station_id, latitude, longitude, tz):
         member = str.__new__(cls, value)
         member._value_ = value
+        member.label = label
         member.station_id = station_id
         member.latitude = latitude
         member.longitude = longitude
+        member.tz = tz
         return member
 
 
@@ -106,7 +124,7 @@ def get_tides(place: Place, year: int) -> List[List[str]]:
         return [row for row in reader]
 
 
-def parse_table(table: Tag, year: int):
+def parse_table(table: Tag, year: int, tz):
     """
     Parse HTML table containing sunrise or sunset times
 
@@ -124,7 +142,7 @@ def parse_table(table: Tag, year: int):
                     day_of_month = int(text)
                 else:
                     hour, minute = text.split(":")
-                    dt_obj = TZ_LOS_ANGELES.localize(
+                    dt_obj = tz.localize(
                         datetime(year, idx, day_of_month, int(hour), int(minute))
                     )
                     times[dt_obj.strftime(DATE_FORMAT)] = dt_obj
@@ -149,8 +167,8 @@ def get_daylight(place: Place, year: int) -> Dict[str, Daylight]:
         soup = BeautifulSoup(f.read(), features="html.parser")
 
         tables = soup.find_all("table")
-        sunrise = parse_table(tables[0], year)
-        sunset = parse_table(tables[1], year)
+        sunrise = parse_table(tables[0], year, place.tz)
+        sunset = parse_table(tables[1], year, place.tz)
 
         for date in sunrise.keys():
             times[date] = Daylight(
@@ -216,7 +234,7 @@ def find_tides(
     if isinstance(year, str):
         year = int(year)
     elif not year:
-        year = TZ_LOS_ANGELES.localize(datetime.now()).year
+        year = place.tz.localize(datetime.now()).year
 
     daylight = get_daylight(place, year)
 
@@ -231,9 +249,7 @@ def find_tides(
         # sanity check parsing
         assert hl in ["H", "L"]
 
-        dt_obj = TZ_LOS_ANGELES.localize(
-            datetime(year, month, day_of_month, hour, minute)
-        )
+        dt_obj = place.tz.localize(datetime(year, month, day_of_month, hour, minute))
         daylight_obj = daylight[date]
 
         if (

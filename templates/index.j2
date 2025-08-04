@@ -122,8 +122,9 @@
       </div>
       <div>
         <select name="place">
-          <option value="seattle" {% if request.args["place"] == "seattle" %}selected{% endif %}>Seattle, WA</option>
-          <option value="cannon_beach" {% if request.args["place"] == "cannon_beach" %}selected{% endif %}>Cannon Beach, OR</option>
+          {% for place_item in place %}
+            <option value="{{ place_item.value }}" {% if request.args["place"] == place_item.value %}selected{% endif %} >{{ place_item.label }}</option>
+          {% endfor %}
         </select>
       </div>
     </div>
