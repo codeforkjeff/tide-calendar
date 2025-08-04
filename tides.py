@@ -182,7 +182,7 @@ def find_tides(
     prediction_limit: str | float = 0.0,
     day_filter: str | DayFilter = DayFilter.ANY,
     hours_filter: str | HoursFilter = HoursFilter.DAY,
-) -> List[Tide]:
+) -> Dict:
     """
     Return a list of filtered tides based on passed-in arguments.
     """
@@ -265,9 +265,9 @@ def find_tides(
                 )
             )
 
-    return tides
+    return {"tides": tides, "tz": place.tz.zone}
 
 
 if __name__ == "__main__":
-    for tide in find_tides():
+    for tide in find_tides()["tides"]:
         print(tide)

@@ -24,6 +24,29 @@
   <script>
   (function () {
 
+    // stolen from https://bobbyhadz.com/blog/javascript-convert-date-to-timezone
+    // resulting Dates will reflect browser's local tz, but its value
+    // should be correct for the passed-in timezone
+    const changeTimeZone = (date, timeZone) => {
+      if (typeof date === 'string') {
+        return new Date(
+          new Date(date).toLocaleString('en-US', {
+            timeZone,
+          }),
+        );
+      }
+
+      return new Date(
+        date.toLocaleString('en-US', {
+          timeZone,
+        }),
+      );
+    };
+
+    const makeDate = (timestamp, timeZone) => {
+      return changeTimeZone(new Date(timestamp), timeZone);
+    };
+
     const loadTides = async () => {
       const url = "/api/tides" + window.location.search;
       try {
@@ -39,7 +62,7 @@
         //   container.insertAdjacentHTML("beforeend", `<div>${new Date(record.tide * 1000)} ${record.prediction}ft</div>`);
         // })
 
-        renderCalendar(result['tides'])
+        renderCalendar(result['tides'], result['tz'])
 
         //console.log(result);
       } catch (error) {
@@ -65,12 +88,12 @@
       return `${hours}:${minutes}${ampm}`;
     };
 
-    const renderCalendar = async(data) => {
+    const renderCalendar = async(data, tz) => {
 
       const dataSource = data.map(record => {
-        const date = new Date(record.tide * 1000);
-        const sunrise = new Date(record.daylight.sunrise * 1000);
-        const sunset = new Date(record.daylight.sunset * 1000);
+        const date = makeDate(record.tide * 1000, tz);
+        const sunrise = makeDate(record.daylight.sunrise * 1000, tz);
+        const sunset = makeDate(record.daylight.sunset * 1000, tz);
         return {
           name: `${formatTime(date)} ${record.prediction} ft<br/>Daylight: ${formatTime(sunrise)} - ${formatTime(sunset)}`,
           color: getColor(record.prediction),
@@ -79,7 +102,7 @@
         };
       })
 
-      const year = new Date(data[0].tide * 1000).getFullYear();
+      const year = makeDate(data[0].tide * 1000, tz).getFullYear();
       console.log(year);
 
       const calendar = new Calendar('#calendar', {

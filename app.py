@@ -19,4 +19,4 @@ def index():
 @app.route("/api/tides")
 def _tides():
     args = dict(request.args)
-    return {"tides": tides.find_tides(**args)}
+    return tides.find_tides(**args)
