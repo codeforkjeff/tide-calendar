@@ -1,6 +1,3 @@
-# find low tides
-#
-# see https://tidesandcurrents.noaa.gov/noaatideannual.html?id=9447130
 from contextlib import contextmanager
 import csv
 from dataclasses import dataclass
