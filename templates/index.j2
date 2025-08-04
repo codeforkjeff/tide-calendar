@@ -95,10 +95,12 @@
         const sunrise = makeDate(record.daylight.sunrise * 1000, tz);
         const sunset = makeDate(record.daylight.sunset * 1000, tz);
         return {
-          name: `${formatTime(date)} ${record.prediction} ft<br/>Daylight: ${formatTime(sunrise)} - ${formatTime(sunset)}`,
+          name: `${formatTime(date)} ${record.prediction} ft`,
           color: getColor(record.prediction),
           startDate: date,
           endDate: date,
+          // not a calendar-recognized key; for our own use
+          daylight: `Daylight: ${formatTime(sunrise)} - ${formatTime(sunset)}`
         };
       })
 
@@ -113,8 +115,12 @@
           if(e.events.length > 0) {
             var content = '';
             for(var i in e.events) {
+              if(content.length > 0) {
+                content += "<br/>"
+              }
               content += e.events[i].name;
             }
+            content += "<br/>" + e.events[0].daylight;
             // e.element is a TD element
             $(e.element).tooltip({ content: content, items: ".day" });
             $(e.element).tooltip("open");
