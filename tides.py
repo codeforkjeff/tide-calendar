@@ -33,7 +33,7 @@ class Place(StrEnum):
     PROVINCETOWN = (
         "provincetown",
         "Provincetown, MA",
-        8447435,
+        8446121,
         42.0521329,
         -70.1927079,
         TZ_NEW_YORK,
