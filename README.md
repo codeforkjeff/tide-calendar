@@ -3,6 +3,8 @@
 
 Display a tide calendar for Seattle and places I sometimes visit.
 
+It's running here: https://tides.codefork.com
+
 ## How to Run
 
 ```
