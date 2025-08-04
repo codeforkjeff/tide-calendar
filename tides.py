@@ -216,7 +216,7 @@ def find_tides(
     if isinstance(year, str):
         year = int(year)
     elif not year:
-        year = datetime.now(tz=TZ_LOS_ANGELES).year
+        year = TZ_LOS_ANGELES.localize(datetime.now()).year
 
     daylight = get_daylight(place, year)
 
