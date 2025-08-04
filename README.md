@@ -15,7 +15,6 @@ docker run -d --restart always -p 127.0.0.1:8000:8000 -v "$(pwd)/cache:/opt/tide
 ## TODO
 
 - handle arbitrary places
-- localize dates in JS to place, not the browser's time zone
 
 ## References
 
