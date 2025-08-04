@@ -1,7 +1,7 @@
 
 # tide-calender
 
-Display a tide calendar for Seattle and places I sometimes visit.
+Display a tide calendar for Seattle and other select places.
 
 It's running here: https://tides.codefork.com
 
