@@ -152,7 +152,7 @@ def get_daylight(place: Place, year: int) -> Dict[str, Daylight]:
     """
     url = f"https://gml.noaa.gov/grad/solcalc/table.php?lat={place.latitude}&lon={place.longitude}&year={year}"
 
-    cached_file = f"{CACHE_DIR}/{year}_{place.value}_daylight.txt"
+    cached_file = f"{CACHE_DIR}/{year}_{place.value}_daylight.html"
     if not os.path.exists(cached_file):
         with urllib.request.urlopen(url) as f:
             with open(cached_file, "w") as output:
