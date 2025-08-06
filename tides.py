@@ -2,9 +2,11 @@ from contextlib import contextmanager
 import csv
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from decimal import Decimal
 from enum import auto, StrEnum
 import os.path
-from typing import Dict, List
+import re
+from typing import Any, Dict, List
 import urllib.request
 
 from bs4 import BeautifulSoup
@@ -16,38 +18,17 @@ TZ_LOS_ANGELES = pytz.timezone("America/Los_Angeles")
 TZ_NEW_YORK = pytz.timezone("America/New_York")
 DATE_FORMAT = "%Y/%m/%d"
 CACHE_DIR = "cache"
+CURRENT_YEAR = datetime.now().year
 
 
-class Place(StrEnum):
-    # to find stations, see https://tidesandcurrents.noaa.gov/map/index.html
-
-    SEATTLE = "seattle", "Seattle, WA", 9447130, 47.6, -122.32, TZ_LOS_ANGELES
-    CANNON_BEACH = (
-        "cannon_beach",
-        "Cannon Beach, OR",
-        9437585,
-        45.89177,
-        -123.96153,
-        TZ_LOS_ANGELES,
-    )
-    PROVINCETOWN = (
-        "provincetown",
-        "Provincetown, MA",
-        8446121,
-        42.0521329,
-        -70.1927079,
-        TZ_NEW_YORK,
-    )
-
-    def __new__(cls, value, label, station_id, latitude, longitude, tz):
-        member = str.__new__(cls, value)
-        member._value_ = value
-        member.label = label
-        member.station_id = station_id
-        member.latitude = latitude
-        member.longitude = longitude
-        member.tz = tz
-        return member
+@dataclass
+class Station:
+    name: str
+    state: str
+    nos_id: str
+    nws_id: str
+    latitude: Decimal
+    longitude: Decimal
 
 
 class TideType(StrEnum):
@@ -85,6 +66,12 @@ class Daylight:
 
 
 @dataclass
+class DaylightInfo:
+    daylight: Dict[str, Daylight]
+    tz: Any
+
+
+@dataclass
 class Tide:
     date: str
     tide_type: TideType
@@ -94,18 +81,26 @@ class Tide:
     daylight: Daylight
 
 
-def get_tides(place: Place, year: int) -> List[List[str]]:
+def retrieve_url_and_cache(url: str, path: str):
+    """
+    if path doesn't exist, fetches the url and writes the response to path.
+    """
+    if not os.path.exists(path):
+        with urllib.request.urlopen(url) as f:
+            with open(path, "w") as output:
+                contents = f.read().decode("utf-8")
+                output.write(contents)
+
+
+def get_tides(station: Station, year: int) -> List[List[str]]:
     """
     Fetches tide data from NOAA for a given year
     """
     # stnid is the monitoring station id (9447130 = Seattle)
-    url = f"https://tidesandcurrents.noaa.gov/cgi-bin/predictiondownload.cgi?&stnid={place.station_id}&threshold=&thresholdDirection=greaterThan&bdate={year}&timezone=LST/LDT&datum=MLLW&clock=24hour&type=txt&annual=true"
+    url = f"https://tidesandcurrents.noaa.gov/cgi-bin/predictiondownload.cgi?&stnid={station.nos_id}&threshold=&thresholdDirection=greaterThan&bdate={year}&timezone=LST/LDT&datum=MLLW&clock=24hour&type=txt&annual=true"
 
-    cached_file = f"{CACHE_DIR}/{year}_{place.station_id}_tides.txt"
-    if not os.path.exists(cached_file):
-        with urllib.request.urlopen(url) as f:
-            with open(cached_file, "w") as output:
-                output.write(f.read().decode("utf-8"))
+    cached_file = f"{CACHE_DIR}/{year}_{station.nos_id}_tides.txt"
+    retrieve_url_and_cache(url, cached_file)
 
     with open(cached_file, "r") as f:
         # skip first section including blank line that follows it
@@ -146,38 +141,80 @@ def parse_table(table: Tag, year: int, tz):
     return times
 
 
-def get_daylight(place: Place, year: int) -> Dict[str, Daylight]:
+def get_daylight(station: Station, year: int) -> DaylightInfo:
     """
     Fetches daylight information from NOAA
     """
-    url = f"https://gml.noaa.gov/grad/solcalc/table.php?lat={place.latitude}&lon={place.longitude}&year={year}"
+    url = f"https://gml.noaa.gov/grad/solcalc/table.php?lat={station.latitude}&lon={station.longitude}&year={year}"
 
-    cached_file = f"{CACHE_DIR}/{year}_{place.value}_daylight.html"
-    if not os.path.exists(cached_file):
-        with urllib.request.urlopen(url) as f:
-            with open(cached_file, "w") as output:
-                output.write(f.read().decode("utf-8"))
+    def format(lat_or_lng):
+        return str(lat_or_lng).replace(".", "_").replace("-", "neg")
+
+    lat_lng = f"{format(station.latitude)}_{format(station.longitude)}"
+
+    cached_file = f"{CACHE_DIR}/{year}_{lat_lng}_daylight.html"
+    retrieve_url_and_cache(url, cached_file)
 
     times = {}
 
     with open(cached_file, "r") as f:
         soup = BeautifulSoup(f.read(), features="html.parser")
 
+        tz_element = soup.find_all(
+            lambda tag: "Time Zone Offset" in (tag.string or "")
+        )[0]
+        tz_str = re.findall(r"Time Zone Offset: ([\w/]+)", tz_element.string)[0]
+        tz = pytz.timezone(tz_str)
+
         tables = soup.find_all("table")
-        sunrise = parse_table(tables[0], year, place.tz)
-        sunset = parse_table(tables[1], year, place.tz)
+        sunrise = parse_table(tables[0], year, tz)
+        sunset = parse_table(tables[1], year, tz)
 
         for date in sunrise.keys():
             times[date] = Daylight(
                 int(sunrise[date].timestamp()), int(sunset[date].timestamp())
             )
 
-    return times
+    return DaylightInfo(times, tz)
+
+
+def get_stations() -> List[Station]:
+    url = f"https://access.co-ops.nos.noaa.gov/nwsproducts.html"
+
+    cached_file = f"{CACHE_DIR}/stations.html"
+    retrieve_url_and_cache(url, cached_file)
+
+    stations = []
+
+    with open(cached_file, "r") as f:
+        soup = BeautifulSoup(f.read(), features="html.parser")
+        tables = soup.css.select("#NWSTable")
+        rows = tables[0].find_all("tr")
+        for row in rows:
+            cols = row.find_all("td")
+            if len(cols) == 6:
+                nos_id, nws_id, latitude, longitude, state, station_name = [
+                    e.string.strip() for e in row.find_all("td")
+                ]
+                stations.append(
+                    Station(
+                        name=station_name,
+                        state=state,
+                        nos_id=nos_id,
+                        nws_id=nws_id,
+                        latitude=Decimal(latitude),
+                        longitude=Decimal(longitude),
+                    )
+                )
+
+    stations = sorted(stations, key=lambda station: f"{station.state}, {station.name}")
+
+    return stations
 
 
 def find_tides(
-    place: str | Place = Place.SEATTLE,
-    year: str | int = None,
+    station: str | Station = "9447130",
+    year: str | int = CURRENT_YEAR,
     tide_type: str | TideType = TideType.LOW,
     prediction_limit: str | float = 0.0,
     day_filter: str | DayFilter = DayFilter.ANY,
@@ -186,9 +223,10 @@ def find_tides(
     """
     Return a list of filtered tides based on passed-in arguments.
     """
+    stations = get_stations()
 
-    if isinstance(place, str):
-        place = Place(place)
+    if isinstance(station, str):
+        station = [s for s in stations if s.nos_id == station][0]
 
     if isinstance(tide_type, str):
         tide_type = TideType(tide_type)
@@ -230,14 +268,13 @@ def find_tides(
 
     if isinstance(year, str):
         year = int(year)
-    elif not year:
-        year = place.tz.localize(datetime.now()).year
 
-    daylight = get_daylight(place, year)
+    daylight_info = get_daylight(station, year)
+    tz = daylight_info.tz
 
     tides = []
 
-    for row in get_tides(place, year):
+    for row in get_tides(station, year):
         (date, dow, time, pred_, _, _, _, _, hl) = row
         pred = float(pred_)
         year, month, day_of_month = [int(part) for part in date.split("/")]
@@ -246,8 +283,8 @@ def find_tides(
         # sanity check parsing
         assert hl in ["H", "L"]
 
-        dt_obj = place.tz.localize(datetime(year, month, day_of_month, hour, minute))
-        daylight_obj = daylight[date]
+        dt_obj = tz.localize(datetime(year, month, day_of_month, hour, minute))
+        daylight_obj = daylight_info.daylight[date]
 
         if (
             filter_tide_type(hl.lower())
@@ -265,9 +302,10 @@ def find_tides(
                 )
             )
 
-    return {"tides": tides, "tz": place.tz.zone}
+    return {"tides": tides, "tz": tz.zone}
 
 
 if __name__ == "__main__":
-    for tide in find_tides()["tides"]:
-        print(tide)
+    # for tide in find_tides()["tides"]:
+    #     print(tide)
+    print(get_stations())

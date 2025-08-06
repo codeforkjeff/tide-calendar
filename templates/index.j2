@@ -147,12 +147,12 @@
   <form id="form">
     <div style="display: flex">
       <div class="col-label">
-        Place:
+        Station:
       </div>
       <div>
-        <select name="place">
-          {% for place_item in place %}
-            <option value="{{ place_item.value }}" {% if request.args["place"] == place_item.value %}selected{% endif %} >{{ place_item.label }}</option>
+        <select name="station">
+          {% for station_item in stations %}
+            <option value="{{ station_item.nos_id }}" {% if request.args["station"] == station_item.nos_id %}selected{% endif %} >{{ station_item.name }}, {{ station_item.state}}</option>
           {% endfor %}
         </select>
       </div>
