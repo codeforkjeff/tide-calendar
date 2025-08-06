@@ -1,7 +1,7 @@
 
 # tide-calender
 
-Display a tide calendar for Seattle and other select places.
+Display a daylight tide calendar for Nation Ocean Service stations.
 
 It's running here: https://tides.codefork.com
 
