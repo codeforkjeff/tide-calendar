@@ -200,6 +200,7 @@
           <option value="day" {% if selected["hours_filter"] == "day" %}selected{% endif %}>daylight hours</option>
           <option value="day_1" {% if selected["hours_filter"] == "day_1" %}selected{% endif %}>daylight +/- 1 hour</option>
           <option value="night" {% if selected["hours_filter"] == "night" %}selected{% endif %}>nighttime hours</option>
+          <option value="anytime" {% if selected["hours_filter"] == "anytime" %}selected{% endif %}>any time of day</option>
         </select>
         <select name="day_filter">
           <option value="any" {% if selected["day_filter"] == "any" %}selected{% endif %}>any day of week</option>

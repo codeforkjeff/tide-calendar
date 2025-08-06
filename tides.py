@@ -57,6 +57,7 @@ class HoursFilter(StrEnum):
     DAY = auto()
     DAY_1 = auto()
     NIGHT = auto()
+    ANYTIME = auto()
 
 
 @dataclass
@@ -265,6 +266,8 @@ def find_tides(
                 )
             case HoursFilter.NIGHT:
                 return date_ts < daylight_obj.sunrise or date_ts > daylight_obj.sunset
+            case HoursFilter.ANYTIME:
+                return True
 
     if isinstance(year, str):
         year = int(year)
