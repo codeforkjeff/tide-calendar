@@ -1,7 +1,6 @@
-from contextlib import contextmanager
 import csv
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 from enum import auto, StrEnum
 import os.path
@@ -14,8 +13,6 @@ from bs4.element import Tag
 import pytz
 
 ONE_HOUR = 60 * 60
-TZ_LOS_ANGELES = pytz.timezone("America/Los_Angeles")
-TZ_NEW_YORK = pytz.timezone("America/New_York")
 DATE_FORMAT = "%Y/%m/%d"
 CACHE_DIR = "cache"
 CURRENT_YEAR = datetime.now().year
