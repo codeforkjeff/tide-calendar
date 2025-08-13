@@ -73,6 +73,7 @@ class DaylightInfo:
 class Tide:
     date: str
     tide_type: TideType
+    tide_dt: datetime
     # timestamp
     tide: int
     prediction: float
@@ -239,7 +240,7 @@ def find_tides(
         hours_filter = HoursFilter(hours_filter)
 
     def filter_tide_type(value):
-        return tide_type.value[0].lower() == value
+        return tide_type == value
 
     def filter_day(date: datetime):
         match (day_filter):
@@ -272,7 +273,7 @@ def find_tides(
     daylight_info = get_daylight(station, year)
     tz = daylight_info.tz
 
-    tides = []
+    all_tides = []
 
     for row in get_tides(station, year):
         (date, dow, time, pred_, _, _, _, _, hl) = row
@@ -286,23 +287,48 @@ def find_tides(
         dt_obj = tz.localize(datetime(year, month, day_of_month, hour, minute))
         daylight_obj = daylight_info.daylight[date]
 
-        if (
-            filter_tide_type(hl.lower())
-            and (pred < prediction_limit)
-            and filter_day(dt_obj)
-            and filter_hours(dt_obj, daylight_obj)
-        ):
-            tides.append(
-                Tide(
-                    dt_obj.strftime(DATE_FORMAT),
-                    TideType(hl),
-                    int(dt_obj.timestamp()),
-                    pred,
-                    daylight_obj,
-                )
+        all_tides.append(
+            Tide(
+                dt_obj.strftime(DATE_FORMAT),
+                TideType(hl),
+                dt_obj,
+                int(dt_obj.timestamp()),
+                pred,
+                daylight_obj,
             )
+        )
 
-    return {"tides": tides, "tz": tz.zone}
+    tides = [
+        tide
+        for tide in all_tides
+        if (
+            filter_tide_type(tide.tide_type)
+            and (tide.prediction < prediction_limit)
+            and filter_day(tide.tide_dt)
+            and filter_hours(tide.tide_dt, tide.daylight)
+        )
+    ]
+
+    highs = [tide.prediction for tide in all_tides if tide.tide_type == TideType.HIGH]
+    high_avg = round(sum(highs) / len(highs), 2)
+    high_min = round(min(highs), 2)
+    high_max = round(max(highs), 2)
+    lows = [tide.prediction for tide in all_tides if tide.tide_type == TideType.LOW]
+    low_avg = round(sum(lows) / len(lows), 2)
+    low_min = round(min(lows), 2)
+    low_max = round(max(lows), 2)
+
+    return {
+        "station": station,
+        "tides": tides,
+        "high_avg": high_avg,
+        "high_min": high_min,
+        "high_max": high_max,
+        "low_avg": low_avg,
+        "low_min": low_min,
+        "low_max": low_max,
+        "tz": tz.zone,
+    }
 
 
 if __name__ == "__main__":

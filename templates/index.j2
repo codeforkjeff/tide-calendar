@@ -65,6 +65,15 @@
         //   container.insertAdjacentHTML("beforeend", `<div>${new Date(record.tide * 1000)} ${record.prediction}ft</div>`);
         // })
 
+        const station = result["station"];
+
+        document.getElementById("station_link").setAttribute("href", "https://tidesandcurrents.noaa.gov/noaatidepredictions.html?id=" + station["nos_id"]);
+        document.getElementById("station_link").innerHTML = `${station["name"]}, ${station["state"]} (${station["nos_id"]})`;
+        document.getElementById("low_min").innerHTML = result["low_min"];
+        document.getElementById("high_max").innerHTML = result["high_max"];
+        document.getElementById("low_avg").innerHTML = result["low_avg"];
+        document.getElementById("high_avg").innerHTML = result["high_avg"];
+
         renderCalendar(result['tides'], result['tz'])
 
         //console.log(result);
@@ -216,6 +225,14 @@
       </div>
     </div>
   </form>
+
+  <div id="station_info">
+    <p>NOS Station Page: <a id="station_link" target="_blank" href=""></a></div>
+    <p>Tidal range: <span id="low_min"></span> ft to <span id="high_max"></span> ft</p>
+    <p>Average low tide for this year: <span id="low_avg"></span> ft</p>
+    <p>Average high tide for this year: <span id="high_avg"></span> ft</p>
+  </div>
+
 
   <div id="calendar">
     <div>Loading, hang on...</div>
