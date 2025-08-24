@@ -1,7 +1,7 @@
 
 # tide-calender
 
-Display a daylight low tide calendar for NOAA's National Ocean Service stations.
+A calendar for finding low tides during daylight, using NOAA's National Ocean Service stations.
 
 It's running here: https://tides.codefork.com
 
