@@ -112,7 +112,7 @@
     const formatTime = (date) => {
       const _hours = date.getHours();
       const hours = _hours > 12 ? _hours - 12 : _hours;
-      const ampm = _hours > 12 ? "pm" : "am";
+      const ampm = _hours >= 12 ? "pm" : "am";
       const minutes = ('00' + date.getMinutes()).slice(-2);
       return `${hours}:${minutes}${ampm}`;
     };
